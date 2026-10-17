@@ -134,7 +134,7 @@ body:has(.portrait){padding:0}
 .game.portrait .hud{top:max(10px,env(safe-area-inset-top));left:10px;right:10px}
 .game.portrait .stage{width:46vw;max-width:none}
 .game.portrait .score,.game.portrait .best{font-size:24px}
-.game.portrait .panel{left:50%;right:auto;top:calc(max(10px,env(safe-area-inset-top)) + 64px);bottom:auto;transform:translateX(-50%);width:calc(100% - 24px);max-width:460px;max-height:max(320px,calc(var(--rider-top,70%) - max(10px,env(safe-area-inset-top)) - 64px));padding:14px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.game.portrait .panel{left:50%;right:auto;top:calc(max(10px,env(safe-area-inset-top)) + 64px);bottom:auto;transform:translateX(-50%);width:calc(100% - 24px);max-width:460px;max-height:max(320px,calc(var(--panel-bottom,70%) - max(10px,env(safe-area-inset-top)) - 64px));padding:14px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .game.portrait .panel h1{font-size:24px}
 .game.portrait .final{font-size:36px}
 .game.portrait .primary{font-size:24px;padding:10px}

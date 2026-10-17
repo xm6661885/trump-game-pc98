@@ -293,6 +293,7 @@ function layout(){
     const bottom=Math.min(750,Math.max(600,548+(r.bottom-f.top)*u)),y0=Math.round((bottom-H)/PX)*PX;
     VB={x:140,y:y0,w:640,h:H};
     root.style.setProperty('--rider-top',Math.round((335-y0)/u)+'px');
+    root.style.setProperty('--panel-bottom',Math.round(f.top-r.top-14)+'px');
   }
   else VB={x:0,y:0,w:960,h:Math.round(960*bh/bw)};
   // Integer upscale of the game-pixel grid so every art pixel is a crisp block.

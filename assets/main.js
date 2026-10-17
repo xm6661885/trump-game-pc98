@@ -186,7 +186,7 @@ function drawPixelBike(g,skin,flash){
   for(const wx of [345,629]){c.save();c.translate(wx,424);c.rotate(ang);
     circle(0,0,76,'#fff6fb',S.dark,9);circle(0,0,64,null,S.rim,2);stroke(SPOKES,S.spoke,3);circle(0,0,8,S.dark);c.restore();}
   duckAnim+=((g.ducking?1:0)-duckAnim)*0.45;const k=duckAnim;
-  const hip=[420,300],sh=[478-k*4,262+k*56],hd=[486+k*18,206+k*100];
+  const hip=[420,300],sh=[478-k*4,262+k*56],hd=[508+k*18,206+k*100];
   const suit=flash?`hsl(${(performance.now()/3)%360} 80% 55%)`:S.suit;
   // far leg (behind frame)
   const pf=[479-pdx,424-pdy],kf=joint(hip[0],hip[1],pf[0],pf[1],78,-1);
@@ -292,7 +292,7 @@ function layout(){
     // Road edge sits just above the touch buttons; the menu card may grow down to the rider's head.
     const bottom=Math.min(750,Math.max(600,548+(r.bottom-f.top)*u)),y0=Math.round((bottom-H)/PX)*PX;
     VB={x:140,y:y0,w:640,h:H};
-    root.style.setProperty('--rider-top',Math.round((290-y0)/u)+'px');
+    root.style.setProperty('--rider-top',Math.round((335-y0)/u)+'px');
   }
   else VB={x:0,y:0,w:960,h:Math.round(960*bh/bw)};
   // Integer upscale of the game-pixel grid so every art pixel is a crisp block.

@@ -26,10 +26,10 @@ const CONFIG=Object.freeze({
   scoreX:187,
   playerRight:405,
   groundBottom:500,
-  airBottom:350,       // high enough that a ducked rider visibly clears it
+  airBottom:336,       // standing head (y=334) still hits; a ducked head (y=390) clears by ~55px
   airHeight:80,
   physicsStep:1/120,
-  duckDrop:42,
+  duckDrop:56,
   duckFallGravity:6000,
   // Extras
   nearPad:20,          // obstacle inflated by this much = "擦边"

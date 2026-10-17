@@ -90,7 +90,7 @@ const store={get(k){try{return manual?null:localStorage.getItem(k);}catch{return
 const W=(n)=>Math.round(n/PX);
 const blank=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,w);c.height=Math.max(1,h);return c;};
 // Obstacles/items are drawn at a size close to their hitbox, in game pixels.
-const SPR={},SIZE={head:[48,54],air:[80,80],box:[54,56],barrier:[66,52],puddle:[132,40],ballot:[30,34],drink:[24,40],shield:[36,36],slow:[28,40],magnet:[34,38]};
+const SPR={},SIZE={head:[48,54],air:[80,80],box:[54,56],barrier:[66,52],puddle:[132,40],rubio:[50,56],khamenei:[58,78],biden:[52,60],zelensky:[78,80],hillary:[84,80],ballot:[30,34],drink:[24,40],shield:[36,36],slow:[28,40],magnet:[34,38]};
 let headLow=null,riderSrc=null;
 function fitInto(img,w,h){const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height,s=Math.min(w/iw,h/ih);return [Math.max(1,Math.round(iw*s)),Math.max(1,Math.round(ih*s))];}
 function makeSprite(key,src,cut){
@@ -101,7 +101,7 @@ function photoHead(img){
   // Head for the rider: an ellipse-clipped, dithered bitmap at bike-canvas resolution.
   const cv=blank(54,48),x=cv.getContext('2d');x.drawImage(cutout(img),0,0,54,48);return quantize(cv,20,4);
 }
-const customArt=k=>store.get('mnr-art-'+k);
+const customArt=k=>photoUnlocked()?store.get('mnr-art-'+k):null;
 function loadArt(){
   const jobs=[];
   const rider=riderChoice();
@@ -109,7 +109,7 @@ function loadArt(){
   if(headUrl)jobs.push(loadImg(headUrl).then(i=>{riderSrc=i;headLow=photoHead(i);}));
   for(const [key,src] of [['head',customArt('ground')||ART.ground],['air',customArt('air')||ART.air]])
     if(src)jobs.push(loadImg(src).then(i=>makeSprite(key,i,true)));
-  for(const key of ['box','barrier','puddle','ballot','drink','shield','slow','magnet'])
+  for(const key of ['box','barrier','puddle','ballot','drink','shield','slow','magnet','rubio','khamenei','biden','zelensky','hillary'])
     if(ART[key]&&!SPR[key])jobs.push(loadImg(ART[key]).then(i=>makeSprite(key,i,false)));
   return Promise.all(jobs.map(p=>p.catch(()=>{}))).then(()=>{buildIcons();buildGarage();});
 }
@@ -163,6 +163,9 @@ const RIDERS=[
   {id:'putin',name:'普京',need:{hell:40,text:'地狱模式 40 分'}},
   {id:'custom',name:'我的照片',need:{custom:true,text:'先上传照片'}}
 ];
+// Custom photos are a late reward: a solid run on standard or hell.
+const PHOTO_NEED={hard:300,stage:3,text:'标准/地狱单局 300 分，并跑到第 4 州'};
+const photoUnlocked=()=>progress.hard>=PHOTO_NEED.hard&&progress.stage>=PHOTO_NEED.stage;
 const bikeCv=document.createElement('canvas'),BX=180,BY=290,BW=240,BH=222;
 bikeCv.width=BW/PX;bikeCv.height=BH/PX;
 const bctx=bikeCv.getContext('2d',{willReadFrequently:true});
@@ -183,7 +186,7 @@ function drawPixelBike(g,skin,flash){
   for(const wx of [345,629]){c.save();c.translate(wx,424);c.rotate(ang);
     circle(0,0,76,'#fff6fb',S.dark,9);circle(0,0,64,null,S.rim,2);stroke(SPOKES,S.spoke,3);circle(0,0,8,S.dark);c.restore();}
   duckAnim+=((g.ducking?1:0)-duckAnim)*0.45;const k=duckAnim;
-  const hip=[420,300],sh=[478-k*4,262+k*44],hd=[452+k*20,206+k*70];
+  const hip=[420,300],sh=[478-k*4,262+k*56],hd=[486+k*18,206+k*100];
   const suit=flash?`hsl(${(performance.now()/3)%360} 80% 55%)`:S.suit;
   // far leg (behind frame)
   const pf=[479-pdx,424-pdy],kf=joint(hip[0],hip[1],pf[0],pf[1],78,-1);
@@ -266,7 +269,7 @@ let mode=store.get('mnr-mode')||'standard';if(!PelicanGame.MODES[mode])mode='sta
 let daily=store.get('mnr-daily')==='1';
 const bestKey=()=>daily?`mnr-best-daily-${today()}`:`mnr-best-${mode}`;
 const readBest=()=>{const v=store.get(bestKey());return v&&/^\d+$/.test(v)?+v:0;};
-let progress={best:0,ballots:0,stage:0,combo:0,hell:0,runs:0};
+let progress={best:0,ballots:0,stage:0,combo:0,hell:0,hard:0,runs:0};
 try{Object.assign(progress,JSON.parse(store.get('mnr-progress')||'{}'));}catch{}
 const unlocked=n=>!n||(n.best&&progress.best>=n.best)||(n.ballots&&progress.ballots>=n.ballots)||(n.stage&&progress.stage>=n.stage)||(n.combo&&progress.combo>=n.combo)||(n.hell&&progress.hell>=n.hell)||(n.custom&&!!customArt('head'));
 let skinId=store.get('mnr-skin')||'pink';
@@ -284,7 +287,13 @@ let VB={x:0,y:0,w:960,h:620},K=1,portrait=false;
 function layout(){
   portrait=innerHeight>innerWidth;root.classList.toggle('portrait',portrait);
   const r=root.getBoundingClientRect(),bw=Math.max(1,r.width),bh=Math.max(1,r.height);
-  if(portrait){const H=Math.round(Math.max(620,640*bh/bw)/PX)*PX;VB={x:140,y:750-H,w:640,h:H};}
+  if(portrait){
+    const H=Math.round(Math.max(620,640*bh/bw)/PX)*PX,u=640/bw,f=$('footer').getBoundingClientRect();
+    // Road edge sits just above the touch buttons; the menu card may grow down to the rider's head.
+    const bottom=Math.min(750,Math.max(600,548+(r.bottom-f.top)*u)),y0=Math.round((bottom-H)/PX)*PX;
+    VB={x:140,y:y0,w:640,h:H};
+    root.style.setProperty('--rider-top',Math.round((290-y0)/u)+'px');
+  }
   else VB={x:0,y:0,w:960,h:Math.round(960*bh/bw)};
   // Integer upscale of the game-pixel grid so every art pixel is a crisp block.
   const gw=VB.w/PX,dpr=window.devicePixelRatio||1;
@@ -340,12 +349,36 @@ function drain(){
         break;
       case 'reverse':root.classList.toggle('reversed',e.on);syncHolds();if(e.on){banner('操作反转','按「趴」跳，按「跳」趴',true);}else banner('操作恢复','');break;
       case 'eventEnd':break;
-      case 'die':sfx.play('die');if(navigator.vibrate)try{navigator.vibrate(80);}catch{}break;
+      case 'die':crashStart();sfx.play('die');if(navigator.vibrate)try{navigator.vibrate(80);}catch{}break;
     }
   }
   g.events.length=0;
 }
 let beatPulse=0;
+
+// ---------- crash: bike flips backwards, rider's head pops off, pixel blast ----------
+const CRASH=1.1;let dieAt=-1e9;
+const crashT=()=>(performance.now()-dieAt)/1000;
+function crashStart(){
+  dieAt=performance.now();
+  burst(330,400,26,['#ffffff','#ffd84a','#ff9e6b','#ff2e7e','#7a1548'],520);
+  burst(330,420,14,['#3a2a3a','#7a1548','#a8648f'],260);
+}
+function drawCrash(skin,jy){
+  const t=crashT(),c=bikeCv;
+  // 1) tumble: arc up and back, spinning, drawn in coarse 45-degree-ish steps for the pixel look
+  drawPixelBike(g,skin,false);
+  const rot=-Math.round(t*7/0.4)*0.4,dx=-t*180,dy=-t*420+t*t*620;
+  sx.save();sx.translate(300+dx,400+jy+dy);sx.rotate(rot);
+  if(t<.18||Math.floor(t*14)%2)sx.drawImage(c,BX-300,BY-400,BW,BH);
+  sx.restore();
+  // 2) blast: expanding pixel rings + a white core for the first few frames
+  if(t<.5){const r=20+t*260,n=28;for(let a=0;a<n;a++){const q=a/n*Math.PI*2;rectPx(340+Math.cos(q)*r,410+jy+Math.sin(q)*r*.7,6,6,t<.25?'#ffd84a':'#ff9e6b');}}
+  if(t<.12){sx.fillStyle='#ffffff';sx.fillRect(VB.x,VB.y,VB.w,VB.h);}
+  else if(t<.3){const s2=(.3-t)*300;rectPx(340-s2/2,410+jy-s2/2,s2,s2,'#ffffff');}
+  const boom=textSprite('BOOM!','#ff2e7e','#ffffff'),bs=PX*3*Math.min(1,t*5);
+  if(t>.08&&t<CRASH-.1)sx.drawImage(boom,Math.round((330-boom.width*bs/2)/PX)*PX,Math.round((300-t*30)/PX)*PX,boom.width*bs,boom.height*bs);
+}
 
 // ---------- drawing ----------
 let bgShown=0,bgFade=1,bgPrev=0;
@@ -357,7 +390,8 @@ function draw(){
   if(bi!==bgShown){bgPrev=bgShown;bgShown=bi;bgFade=0;prepBg((bi+1)%BG_COUNT);}
   bgFade=Math.min(1,bgFade+1/40);
   sx.fillStyle=BG_TOP[bgShown]||'#ffe6f2';sx.fillRect(0,0,screen.width,screen.height);
-  sx.setTransform(s,0,0,s,-VB.x*s,-VB.y*s);
+  const shake=g.state==='over'&&crashT()<.45?Math.round((Math.random()-.5)*14*(1-crashT()/.45)/PX)*PX:0;
+  sx.setTransform(s,0,0,s,(-VB.x+shake)*s,(-VB.y+shake*.5)*s);
   // Backdrop: 640x427 art scaled 1.5x, its ground strip lined up with the road; slow parallax.
   const off=-Math.round((g.distance*0.06)%1920/PX)*PX;
   const drawBg=(i,a)=>{const im=BG[i];if(!im)return;sx.globalAlpha=a;const top=492-BG_STRIP[i]*1.5;
@@ -381,6 +415,8 @@ function draw(){
     if(o.art==='puddle'){if(im)drawSprite(im,left-6,o.bottom-28,o.w+12,36);else rectPx(left,o.bottom-10,o.w,10,'#9b6fb0');}
     else if(o.type==='bouncer'){const sq=o.bottom>494?6:0;drawSprite(im,left-sq/2,top+sq,o.w+sq,o.h-sq);
       for(let k=0;k<3;k++)rectPx(left+o.w/2-6+(k%2)*6,o.bottom+k*((500-o.bottom)/3),6,Math.max(3,(500-o.bottom)/3-2),'#7a1548');}
+    else if(o.pop&&im){const [w,h]=SIZE[o.art],hh=Math.max(10,h*o.h/o.pop);drawSprite(im,left+(o.w-w)/2-(h-hh)*.2,o.bottom-hh,w+(h-hh)*.4,hh);
+      if(o.h<o.pop*.5)for(let k=0;k<3;k++){const z=(g.time*1.5+k/3)%1;const im2=textSprite('z','#7a1548','#ffffff');sx.drawImage(im2,left+o.w*.7+z*24,o.bottom-hh-14-z*36,im2.width*PX,im2.height*PX);}}
     else if(im){const [w,h]=SIZE[o.art];drawSprite(im,left+(o.w-w)/2,o.bottom-h,w,h);}
     else rectPx(left,top,o.w,o.h,'#e08a4a');
   }
@@ -395,7 +431,8 @@ function draw(){
   const jy=Math.round(g.y/PX)*PX+(g.land>.3?PX:0);
   sx.fillStyle='#c86ea6';sx.globalAlpha=Math.max(.09,.3+g.y*.0008);sx.beginPath();sx.ellipse(296,505,116+g.y*.17,8,0,0,7);sx.fill();sx.globalAlpha=1;
   const skin=skinOf();
-  if(g.state!=='over'||Math.floor(performance.now()/120)%2){
+  if(g.state==='over'&&crashT()<CRASH){drawCrash(skin,jy);}
+  else if(g.state!=='over'||Math.floor(performance.now()/240)%2){
     drawPixelBike(g,skin,g.drink>0);
     if(g.drink>0)for(let k=1;k<=2;k++){sx.globalAlpha=.25/k;sx.drawImage(bikeCv,BX-k*24,BY+jy,BW,BH);}
     sx.globalAlpha=g.invuln>0&&Math.floor(performance.now()/80)%2?.4:1;sx.drawImage(bikeCv,BX,BY+jy,BW,BH);sx.globalAlpha=1;
@@ -459,7 +496,7 @@ function onOver(){
   newBest=g.score>best;if(newBest){best=g.score;store.set(bestKey(),String(best));}
   const before=[...SKINS,...RIDERS].filter(x=>unlocked(x.need)).length;
   progress.best=Math.max(progress.best,g.score);progress.ballots+=g.ballots;progress.stage=Math.max(progress.stage,g.stage);
-  progress.combo=Math.max(progress.combo,g.maxCombo);if(g.mode==='hell')progress.hell=Math.max(progress.hell,g.score);progress.runs++;
+  progress.combo=Math.max(progress.combo,g.maxCombo);if(g.mode==='hell')progress.hell=Math.max(progress.hell,g.score);if(g.mode!=='casual')progress.hard=Math.max(progress.hard,g.score);progress.runs++;
   store.set('mnr-progress',JSON.stringify(progress));
   const after=[...SKINS,...RIDERS].filter(x=>unlocked(x.need));
   unlockMsg=after.length>before?`解锁了新东西：${after.slice(before-after.length).map(x=>x.name).join('、')}（去车库看看）`:'';
@@ -470,8 +507,11 @@ function onOver(){
   $('announcement').textContent=`本轮结束，得分 ${g.score}。`;flash();
 }
 function panel(){
-  if(g.state===prevState)return;prevState=g.state;
+  if(g.state===prevState)return;
+  if(g.state==='over'&&crashT()<CRASH){root.dataset.state='crash';return;}
+  prevState=g.state;
   root.dataset.state=g.state;$('overlay').hidden=g.state==='running';
+  if(g.state!=='running'){const o=$('overlay');o.classList.remove('scan');void o.offsetWidth;o.classList.add('scan');}
   const s=g.state;
   $('result').hidden=s!=='over';$('posterBtn').hidden=s!=='over';
   $('panelDesc').hidden=s==='over';$('setup').hidden=s==='paused';$('tabsWrap').hidden=s==='paused';
@@ -506,7 +546,7 @@ function release(id){const s=srcs.get(id);if(!s)return;srcs.delete(id);held[s.k]
 function clearHolds(){srcs.clear();held.jump.clear();held.duck.clear();g.setJumpHeld(false);g.setDuckHeld(false);}
 function start(){
   if(g.state==='paused'){g.togglePause();return;}
-  if(g.state==='over'&&performance.now()-overAt<450)return;
+  if(g.state==='over'&&(crashT()<CRASH||performance.now()-overAt<450))return;
   if(g.state==='ready'||g.state==='over'){
     g=PelicanGame.createGame({seed:newSeed(),mode:daily?'standard':mode});best=readBest();
     if(manual)window.__pelican.game=g;
@@ -556,6 +596,12 @@ const soundBtn=document.createElement('button');soundBtn.className='small';sound
 const syncSound=()=>{soundBtn.textContent=sfx.muted?'♪ 关':'♪ 开';soundBtn.setAttribute('aria-label',sfx.muted?'打开声音':'关闭声音');};
 soundBtn.addEventListener('click',()=>{sfx.toggle();syncSound();if(sfx.muted)bgm.pause();root.focus({preventScroll:true});});
 $('pause').before(soundBtn);syncSound();
+// iOS Safari ignores user-scalable=no: block pinch and double-tap zoom by hand.
+for(const n of ['gesturestart','gesturechange','gestureend'])document.addEventListener(n,e=>e.preventDefault(),{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouchEnd<350&&!e.target.closest('button,a,input,label'))e.preventDefault();lastTouchEnd=now;},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault();},{passive:false});
+document.addEventListener('selectstart',e=>e.preventDefault());
 
 // ---------- garage: riders, skins, custom photos ----------
 function preview(skin,headImg){
@@ -567,6 +613,10 @@ const riderHeads={};
 function buildGarage(){
   const rl=$('riderList'),sl=$('skinList'),cur=riderChoice(),sk=skinOf().id;
   rl.replaceChildren();sl.replaceChildren();
+  const pOK=photoUnlocked();
+  for(const b of document.querySelectorAll('[data-upload],#resetArt'))b.disabled=!pOK;
+  if(!pOK)$('garageNote').textContent=`未解锁 · 条件：${PHOTO_NEED.text}（当前最高 ${progress.hard} 分 · 第 ${progress.stage+1} 州）`;
+  else if(/^未解锁/.test($('garageNote').textContent))$('garageNote').textContent='照片只在你的浏览器里处理，不会上传。';
   for(const R of RIDERS){
     const ok=unlocked(R.need),b=document.createElement('button');b.type='button';b.className='opt';b.disabled=!ok;b.setAttribute('aria-pressed',String(R.id===cur));
     const cv=blank(48,36);if(riderHeads[R.id]){const x=cv.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(riderHeads[R.id],8,0,32,36);}
@@ -604,7 +654,7 @@ function takePhoto(file,target){
 }
 $('avatarFile').addEventListener('change',e=>{takePhoto(e.target.files[0],uploadTarget);e.target.value='';});
 root.addEventListener('dragover',e=>e.preventDefault());
-root.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)takePhoto(f,'head');});
+root.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f&&photoUnlocked())takePhoto(f,'head');});
 $('resetArt').addEventListener('click',()=>{for(const k of ['head','ground','air'])store.del('mnr-art-'+k);store.set('mnr-rider','trump');delete SPR.head;delete SPR.air;$('garageNote').textContent='已恢复默认素材。';loadArt();loadRiderHeads();});
 
 // ---------- result poster (pixel canvas, 4x nearest-neighbour) ----------

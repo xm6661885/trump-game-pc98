@@ -1,7 +1,7 @@
 // Fairness: a lookahead bot (no items, no shield) must survive every mode for
 // several minutes across many seeds. If a pattern is impossible to dodge, the
 // bot dies and this test fails with the seed and what killed it.
-// Run: node tests/fairness.test.cjs [seeds] [seconds]
+// Run: node tests/fairness.test.cjs [seeds] [seconds] [modes, e.g. hell,casual]
 const {createGame}=require('../assets/game.js');
 const DT=1/60;
 const SEEDS=+(process.argv[2]||12),SECS=+(process.argv[3]||200);
@@ -34,7 +34,7 @@ function choose(g){
   return null;
 }
 let fails=0;
-for(const mode of ['casual','standard','hell']){
+for(const mode of (process.argv[4]||'casual,standard,hell').split(',')){
   for(let s=1;s<=SEEDS;s++){
     const g=createGame({seed:s*7919,mode});g.cfg.items=false;g.action();
     let hold=null,left=0,stuck=null;

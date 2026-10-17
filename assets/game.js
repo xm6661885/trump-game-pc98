@@ -4,9 +4,9 @@
 'use strict';
 
 const CONFIG=Object.freeze({
-  startSpeed:480,
-  maxSpeed:960,
-  speedAcceleration:4,
+  startSpeed:470,
+  maxSpeed:900,
+  speedAcceleration:3.2,
   gravity:2050,
   fallGravity:2450,
   apexGravityScale:0.55,
@@ -26,7 +26,7 @@ const CONFIG=Object.freeze({
   scoreX:187,
   playerRight:405,
   groundBottom:500,
-  airBottom:368,
+  airBottom:350,       // high enough that a ducked rider visibly clears it
   airHeight:80,
   physicsStep:1/120,
   duckDrop:42,
@@ -39,13 +39,16 @@ const CONFIG=Object.freeze({
   slowScale:0.6,
   beat:0.625,         // 96 BPM; rush obstacles land every two beats
   comboGap:0.9,
-  itemChance:0.13
+  itemChance:0.13,
+  unlockScale:1,      // multiplies the times at which harder patterns start appearing
+  newChance:0.4       // share of ground/air spawns that use one of the newer faces
 });
 
 const MODES=Object.freeze({
-  casual:Object.freeze({startSpeed:420,maxSpeed:780,speedAcceleration:2.5,spawnMin:1.45,spawnMax:2.3,airChance:0.25}),
+  // Casual barely speeds up; hell starts fast, ramps hard and throws the tricky patterns early.
+  casual:Object.freeze({startSpeed:380,maxSpeed:560,speedAcceleration:0.9,spawnMin:1.8,spawnMax:2.8,airChance:0.2,unlockScale:1.8,newChance:0.3,itemChance:0.2}),
   standard:Object.freeze({}),
-  hell:Object.freeze({startSpeed:560,maxSpeed:1040,speedAcceleration:6,spawnMin:1.1,spawnMax:1.7,airChance:0.38})
+  hell:Object.freeze({startSpeed:620,maxSpeed:1180,speedAcceleration:9,spawnMin:1.1,spawnMax:1.5,airChance:0.42,unlockScale:0.35,newChance:0.55,itemChance:0.08,comboGap:0.8})
 });
 
 const ITEMS=Object.freeze({
@@ -62,7 +65,10 @@ const GROUND=Object.freeze({
   box:{w:50,h:52},
   barrier:{w:64,h:50},
   puddle:{w:120,h:16},
-  bouncer:{w:48,h:54}
+  bouncer:{w:48,h:54},
+  rubio:{w:48,h:54},     // rolls in faster than the road
+  khamenei:{w:56,h:74},  // tall: needs a full jump
+  biden:{w:48,h:58}      // dozes flat, pops up when you get close
 });
 
 const multOf=c=>Math.min(5,1+Math.floor(c/2));
@@ -117,6 +123,25 @@ const Proto={
       this.addObstacle('bouncer','head',x,G.w,G.h,M.groundBottom,grp(),{amp:46,freq:Math.PI/0.7,phase:patR*Math.PI});
       return {end:x+G.w,center:x+G.w/2};
     }
+    if(pat==='rubio'){
+      const G=GROUND.rubio;this.addObstacle('ground','rubio',x,G.w,G.h,M.groundBottom,grp(),{fast:0.22});
+      return {end:x+G.w,center:x+G.w/2,fast:true};
+    }
+    if(pat==='khamenei'||pat==='biden'){
+      const G=GROUND[pat];this.addObstacle('ground',pat,x,G.w,pat==='biden'?18:G.h,M.groundBottom,grp(),pat==='biden'?{pop:G.h}:{});
+      return {end:x+G.w,center:x+G.w/2};
+    }
+    if(pat==='zelensky'){
+      // Two in a row: stay down until both have passed.
+      const g=grp();this.addObstacle('air','zelensky',x,80,M.airHeight,M.airBottom,g,{scored:true});
+      this.addObstacle('air','zelensky',x+110,80,M.airHeight,M.airBottom,g);
+      return {end:x+190,center:x+95};
+    }
+    if(pat==='hillary'){
+      // Swoops down from the top, already at duck height well before it reaches you.
+      this.addObstacle('air','hillary',x,80,M.airHeight,M.airBottom,grp(),{drop:true});
+      return {end:x+80,center:x+40};
+    }
     if(pat==='combo'){
       this.addObstacle('ground','head',x,48,54,M.groundBottom,grp());
       const ax=x+this.base*M.comboGap;
@@ -134,16 +159,22 @@ const Proto={
   spawn(){
     const M=this.cfg,t=this.time,s=this.base,eff=s*0.92;
     // Fixed number of draws per spawn keeps the course identical for everyone on a seed.
-    const r=this.random(),gapR=this.random(),kindR=this.random(),patR=this.random(),itemR=this.random(),itemK=this.random(),ballR=this.random();
-    const rush=this.rush>0;
+    const r=this.random(),gapR=this.random(),kindR=this.random(),patR=this.random(),itemR=this.random(),itemK=this.random(),ballR=this.random(),newR=this.random();
+    const rush=this.rush>0,u=M.unlockScale;
     let gap=rush?M.beat*2:M.spawnMin+gapR*(M.spawnMax-M.spawnMin);
     let pat='ground';
-    if(t>6&&r<M.airChance)pat='air';
-    else if(t>16&&r<M.airChance+0.08)pat='puddle';
-    else if(t>22&&r<M.airChance+0.15)pat='bouncer';
-    else if(t>28&&!rush&&r<M.airChance+0.22)pat='combo';
+    if(t>6*u&&r<M.airChance)pat='air';
+    else if(t>16*u&&r<M.airChance+0.08)pat='puddle';
+    else if(t>22*u&&r<M.airChance+0.15)pat='bouncer';
+    else if(t>28*u&&!rush&&r<M.airChance+0.22)pat='combo';
+    if(t>10*u&&newR<M.newChance){
+      const k=newR/M.newChance;
+      if(pat==='ground')pat=k<0.34?'rubio':k<0.67?'khamenei':'biden';
+      else if(pat==='air')pat=k<0.5||rush?'hillary':'zelensky';
+    }
     const x=M.spawnX,p=this.place(pat,x,kindR,patR,eff);
     if(p.combo)gap=Math.max(gap,M.comboGap+M.spawnMin);
+    if(pat==='zelensky')gap+=110/s;
     const next=x+s*gap,xc=(p.end+next)/2,val=rush?2:1;
     if(t>8&&itemR<M.itemChance&&!rush){
       this.pickups.push({id:this.nextId++,kind:ITEM_KINDS[Math.floor(itemK*ITEM_KINDS.length)],x:xc,y:262,r:24});
@@ -247,9 +278,11 @@ const Proto={
     if(this.nextSpawn<=0)this.spawn();
 
     for(const o of this.obstacles){
-      o.x-=this.speed*step;
+      o.x-=this.speed*step*(1+(o.fast||0));
       if(o.dead)continue;
       if(o.type==='bouncer')o.bottom=M.groundBottom-o.amp*Math.abs(Math.sin(o.phase+this.time*o.freq));
+      if(o.drop)o.bottom=M.airBottom-Math.max(0,o.x-620)*0.75;
+      if(o.pop)o.h=o.x>680?18:Math.min(o.pop,18+(680-o.x)*0.6);
       if(this.collides(o,0)){
         if(this.drink>0){this.smash(o);o.grp.hit=true;this.add(2);this.emit('smash',{x:o.x});continue;}
         if(this.invuln>0){o.grp.hit=true;continue;}
